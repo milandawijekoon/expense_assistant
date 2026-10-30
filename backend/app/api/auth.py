@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 
 from app.deps import CurrentUser, DbSession
 from app.rate_limit import auth_limit, limiter
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserOut
+from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserOut, UserUpdate
 from app.security import create_access_token
 from app.services import auth_service
 
@@ -25,4 +25,12 @@ def login(request: Request, body: LoginRequest, db: DbSession) -> TokenResponse:
 
 @router.get("/me", response_model=UserOut)
 def me(user: CurrentUser) -> UserOut:
+    return UserOut.model_validate(user)
+
+
+@router.patch("/me", response_model=UserOut)
+def update_me(body: UserUpdate, user: CurrentUser, db: DbSession) -> UserOut:
+    """Change the currency used for new expenses and for totals, summaries and reports."""
+    user.default_currency = body.default_currency
+    db.commit()
     return UserOut.model_validate(user)

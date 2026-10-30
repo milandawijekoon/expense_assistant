@@ -3,8 +3,10 @@
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { CurrencySelect } from "@/components/CurrencySelect";
 import { ErrorBanner, Spinner } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
+
 
 export default function LoginPage() {
   const { token, ready, signIn, signUp } = useAuth();
@@ -12,14 +14,15 @@ export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [currency, setCurrency] = useState("INR");
 
   useEffect(() => {
-    if (ready && token) router.replace("/add");
+    if (ready && token) router.replace("/dashboard");
   }, [ready, token, router]);
 
   const mutation = useMutation({
-    mutationFn: () => (mode === "login" ? signIn(email, password) : signUp(email, password)),
-    onSuccess: () => router.replace("/add"),
+    mutationFn: () => (mode === "login" ? signIn(email, password) : signUp(email, password, currency)),
+    onSuccess: () => router.replace("/dashboard"),
   });
 
   const isLogin = mode === "login";
@@ -76,6 +79,18 @@ export default function LoginPage() {
             </p>
           )}
         </div>
+
+        {!isLogin && (
+          <div>
+            <label htmlFor="currency" className="mb-1 block text-sm font-medium">
+              Currency
+            </label>
+            <CurrencySelect id="currency" value={currency} onChange={setCurrency} describedBy="currency-hint" />
+            <p id="currency-hint" className="mt-1 text-xs text-slate-500">
+              You can change it later in Settings.
+            </p>
+          </div>
+        )}
 
         <button type="submit" className="btn-primary w-full" disabled={mutation.isPending}>
           {mutation.isPending && <Spinner label="Please wait" />}

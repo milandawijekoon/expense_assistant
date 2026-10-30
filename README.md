@@ -26,7 +26,9 @@ docker compose up --build
 - App: http://localhost:3000
 - API docs (Swagger): http://localhost:8000/docs
 
-The backend runs `alembic upgrade head` on start. Create an account on the login page, then add an expense.
+The backend runs `alembic upgrade head` on start. Create an account on the login page; you land on the dashboard, where you can add expenses.
+
+**AI provider:** open **Settings** in the app to choose a provider (Anthropic, OpenAI or compatible, or local Ollama), a model and your API key. Keys are stored encrypted (derived from `JWT_SECRET`, so keep that stable) and are per user. The `LLM_PROVIDER` / `*_API_KEY` variables below are only a server-wide fallback for users who haven't saved their own settings.
 
 `NEXT_PUBLIC_API_URL` is baked into the frontend at build time and must be the address your **browser**
 uses for the API. Change it in `.env` and rebuild (`docker compose up --build`) if you don't use localhost.
@@ -68,7 +70,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev   # http://localhost:3000
 | `DEFAULT_CURRENCY` | `INR` | Currency assumed when none is mentioned |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | API address as seen by the browser (build time) |
 
-If the selected provider has no API key, the LLM endpoints return `503 llm_not_configured`; everything else works.
+If the effective provider has no API key (neither saved in Settings nor set on the server), the LLM endpoints return `503 llm_not_configured`; everything else works.
 
 ## Example requests
 

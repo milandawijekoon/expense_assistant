@@ -61,4 +61,4 @@ class LLMError(AppError):
 class LLMNotConfigured(LLMError):
     status_code = 503
     code = "llm_not_configured"
-    message = "The AI service is not configured on the server."
+    message = "No AI provider is set up yet. Add your API key under Settings."

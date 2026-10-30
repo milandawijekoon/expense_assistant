@@ -28,6 +28,17 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=200)
 
 
+class UserUpdate(BaseModel):
+    default_currency: str = Field(min_length=3, max_length=3)
+
+    @field_validator("default_currency")
+    @classmethod
+    def _currency(cls, v: str) -> str:
+        if not v.isascii() or not v.isalpha():
+            raise ValueError("Currency must be a 3-letter ISO code.")
+        return v.upper()
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

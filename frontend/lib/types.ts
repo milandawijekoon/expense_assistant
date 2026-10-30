@@ -64,3 +64,55 @@ export interface ExpenseFilters {
   category: string;
   page: number;
 }
+
+export type Provider = "anthropic" | "openai" | "ollama";
+
+export interface LLMSettings {
+  provider: Provider;
+  model: string;
+  base_url: string | null;
+  has_api_key: boolean;
+  api_key_hint: string | null;
+  configured: boolean;
+  source: "user" | "server";
+}
+
+export interface LLMSettingsInput {
+  provider: Provider;
+  model: string;
+  api_key?: string;
+  base_url?: string;
+}
+
+export interface MonthlyRow {
+  month: string;
+  total: number;
+  expense_count: number;
+  change_pct: number | null;
+  top_category: string | null;
+  top_category_total: number;
+}
+
+export interface MonthlyReport {
+  year: number;
+  currency: string;
+  year_total: number;
+  average_per_month: number;
+  months: MonthlyRow[];
+  other_currencies: string[];
+}
+
+export interface User {
+  id: string;
+  email: string;
+  default_currency: string;
+}
+
+export interface ExpenseUpdate {
+  amount?: number;
+  currency?: string;
+  category?: Category;
+  merchant?: string | null;
+  date?: string;
+  description?: string | null;
+}

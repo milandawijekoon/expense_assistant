@@ -3,13 +3,18 @@ import type {
   ChatTurn,
   Expense,
   ExpenseFilters,
+  ExpenseUpdate,
   ExpensePage,
+  LLMSettings,
+  LLMSettingsInput,
+  MonthlyReport,
   ParsedExpense,
   Summary,
+  User,
 } from "./types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-export const PAGE_SIZE = 10;
+export const PAGE_SIZE = 50;
 
 export class ApiError extends Error {
   constructor(
@@ -81,28 +86,40 @@ export const api = {
       body: { email, password },
       auth: false,
     }),
-  register: (email: string, password: string) =>
+  register: (email: string, password: string, default_currency?: string) =>
     request<{ access_token: string }>("/auth/register", {
       method: "POST",
-      body: { email, password },
+      body: { email, password, default_currency },
       auth: false,
     }),
+
+  me: () => request<User>("/auth/me"),
+  updateCurrency: (default_currency: string) =>
+    request<User>("/auth/me", { method: "PATCH", body: { default_currency } }),
 
   parseExpense: (text: string) =>
     request<ParsedExpense>("/expenses/parse", { method: "POST", body: { text } }),
   createExpense: (body: ParsedExpense & { raw_text?: string }) =>
     request<Expense>("/expenses", { method: "POST", body }),
-  listExpenses: ({ month, category, page }: ExpenseFilters) => {
-    const params = new URLSearchParams({ page: String(page), page_size: String(PAGE_SIZE) });
+  listExpenses: ({ month, category, page }: ExpenseFilters, pageSize = PAGE_SIZE) => {
+    const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
     if (month) params.set("month", month);
     if (category) params.set("category", category);
     return request<ExpensePage>(`/expenses?${params}`);
   },
-  updateExpense: (id: string, patch: Partial<ParsedExpense>) =>
+  updateExpense: (id: string, patch: ExpenseUpdate) =>
     request<Expense>(`/expenses/${id}`, { method: "PATCH", body: patch }),
   deleteExpense: (id: string) => request<void>(`/expenses/${id}`, { method: "DELETE" }),
 
   summary: (month: string) => request<Summary>(`/summary?month=${month}`),
+  monthlyReport: (year: number) => request<MonthlyReport>(`/reports/monthly?year=${year}`),
+
+  getLLMSettings: () => request<LLMSettings>("/settings/llm"),
+  saveLLMSettings: (body: LLMSettingsInput) =>
+    request<LLMSettings>("/settings/llm", { method: "PUT", body }),
+  resetLLMSettings: () => request<LLMSettings>("/settings/llm", { method: "DELETE" }),
+  testLLMSettings: () => request<{ ok: boolean }>("/settings/llm/test", { method: "POST" }),
+
   chat: (message: string, history: ChatTurn[]) =>
     request<{ reply: string }>("/assistant/chat", { method: "POST", body: { message, history } }),
 };

@@ -11,3 +11,4 @@ pyjwt>=2.8
 anthropic>=0.40
 openai>=1.50
 slowapi>=0.1.9
+cryptography>=42

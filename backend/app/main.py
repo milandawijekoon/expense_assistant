@@ -6,7 +6,8 @@ from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api import assistant, auth, expenses, summary
+from app.api import assistant, auth, expenses, reports, summary
+from app.api import settings as llm_settings
 from app.config import get_settings
 from app.errors import AppError
 from app.logging_config import configure_logging
@@ -70,7 +71,7 @@ def create_app() -> FastAPI:
             },
         )
 
-    for module in (auth, expenses, summary, assistant):
+    for module in (auth, expenses, summary, reports, assistant, llm_settings):
         app.include_router(module.router)
 
     @app.get("/health", tags=["meta"])

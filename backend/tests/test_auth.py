@@ -65,3 +65,17 @@ def test_cors_allows_frontend_origin(client):
         },
     )
     assert res.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+def test_update_default_currency(client, auth):
+    res = client.patch("/auth/me", json={"default_currency": "usd"}, headers=auth)
+    assert res.status_code == 200 and res.json()["default_currency"] == "USD"
+    assert client.get("/auth/me", headers=auth).json()["default_currency"] == "USD"
+    assert client.get("/summary?month=2026-01", headers=auth).json()["currency"] == "USD"
+
+
+def test_update_default_currency_validates(client, auth):
+    for bad in ("US", "USDX", "12$", "ÄÖÜ"):
+        res = client.patch("/auth/me", json={"default_currency": bad}, headers=auth)
+        assert res.status_code == 422
+    assert client.patch("/auth/me", json={"default_currency": "USD"}).status_code == 401

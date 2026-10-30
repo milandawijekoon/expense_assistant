@@ -11,7 +11,7 @@ interface AuthState {
   /** False until the stored token has been read on the client. */
   ready: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, currency?: string) => Promise<void>;
   signOut: () => void;
 }
 
@@ -50,7 +50,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       token,
       ready,
       signIn: async (email, password) => store((await api.login(email, password)).access_token),
-      signUp: async (email, password) => store((await api.register(email, password)).access_token),
+      signUp: async (email, password, currency) =>
+        store((await api.register(email, password, currency)).access_token),
       signOut,
     };
   }, [token, ready, signOut]);
