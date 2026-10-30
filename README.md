@@ -158,6 +158,10 @@ own computer), then paste your key. The key is stored scrambled (encrypted) and 
 
 ---
 
+## Open source
+
+This project is open source under the [MIT License](LICENSE): you are free to use, change and share it.
+
 ## For developers
 
 The technical details (how it's built, running without Docker, every setting, API examples, tests) are in

@@ -5,3 +5,9 @@ __pycache__/
 .ruff_cache/
 node_modules/
 .next/
+
+# Editor / build artifacts
+.idea/
+.vscode/
+*.tsbuildinfo
+.DS_Store
