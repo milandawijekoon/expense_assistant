@@ -1,150 +1,165 @@
 # Smart Expense Assistant
 
-Type an expense in plain language ("Paid 1800 rupees for lunch at Barista today"). An LLM extracts the
-amount, currency, category, merchant and date; the backend validates and saves it. You can browse
-transactions, see a monthly dashboard, and ask spending questions in a chat.
+A simple app to keep track of the money you spend.
 
-- **Backend:** Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.0, Alembic, PostgreSQL, pandas
-- **LLM:** Anthropic or OpenAI, chosen with `LLM_PROVIDER`, using structured JSON output
-- **Frontend:** Next.js (App Router), TypeScript, Tailwind CSS, Recharts, React Query
+Instead of filling in boxes, you can just **type what you spent, the way you'd say it**:
 
-```
-/backend    FastAPI app, Alembic migrations, pytest suite
-/frontend   Next.js app
-docker-compose.yml   db + backend + frontend
-.env.example         every setting, documented
-```
+> "Paid 1800 rupees for lunch at Barista today"
 
-## Quick start (Docker)
+The app works out the amount, category (Food, Travel, ...), shop name and date for you, and saves it.
+You can also fill in a form by hand if you prefer. Later you can look at charts of where your money
+went, and **ask questions in plain English**, like "How much did I spend on food compared to last month?"
 
-```bash
-cp .env.example .env
-# edit .env: set JWT_SECRET and ANTHROPIC_API_KEY (or LLM_PROVIDER=openai + OPENAI_API_KEY)
-docker compose up --build
-```
+![Dashboard](docs/screenshots/02-dashboard.png)
 
-- App: http://localhost:3000
-- API docs (Swagger): http://localhost:8000/docs
+---
 
-The backend runs `alembic upgrade head` on start. Create an account on the login page; you land on the dashboard, where you can add expenses.
+## What you can do with it
 
-**AI provider:** open **Settings** in the app to choose a provider (Anthropic, OpenAI or compatible, or local Ollama), a model and your API key. Keys are stored encrypted (derived from `JWT_SECRET`, so keep that stable) and are per user. The `LLM_PROVIDER` / `*_API_KEY` variables below are only a server-wide fallback for users who haven't saved their own settings.
+| Page | What it's for |
+|---|---|
+| **Dashboard** | Add an expense and see this month's spending at a glance. |
+| **Transactions** | See every expense in a list. Search, filter by month or category, fix or delete entries. |
+| **Reports** | Charts showing spending by month and by category. |
+| **Assistant** | A chat where you ask questions about your own spending. |
+| **Settings** | Choose your currency, how you add expenses, and which AI to use. |
 
-`NEXT_PUBLIC_API_URL` is baked into the frontend at build time and must be the address your **browser**
-uses for the API. Change it in `.env` and rebuild (`docker compose up --build`) if you don't use localhost.
+Your data stays on your own computer. Each person has their own account and only sees their own expenses.
 
-## Run without Docker
+---
 
-You need PostgreSQL 14+ and a database matching `DATABASE_URL`.
+## Before you start
 
-```bash
-# backend
-cd backend
-python3.12 -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt
-export $(grep -v '^#' ../.env | xargs)   # or set the variables yourself
-alembic upgrade head
-uvicorn app.main:app --reload            # http://localhost:8000
+You need to install **one** free program: **Docker Desktop**. It runs the whole app for you, so you
+don't have to install anything else.
 
-# frontend (second terminal)
-cd frontend
-npm install
-NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev   # http://localhost:3000
-```
+1. Go to <https://www.docker.com/products/docker-desktop/> and download it for your computer (Mac or Windows).
+2. Install it and **open it**. Wait until it says Docker is running.
 
-## Environment variables
+Optional: to use the "type it in words" feature and the Assistant, you need an **AI key** (a password
+that lets the app talk to an AI service such as Anthropic's Claude or OpenAI). Without it, everything
+still works except those two things, and you can add expenses with the form.
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `DATABASE_URL` | local Postgres | SQLAlchemy URL, `postgresql+psycopg://user:pass@host:5432/db` |
-| `POSTGRES_USER` / `_PASSWORD` / `_DB` | `expense` | Used by the compose `db` service |
-| `JWT_SECRET` | placeholder | **Change it.** `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
-| `JWT_EXPIRE_MINUTES` | `60` | Token lifetime |
-| `FRONTEND_ORIGIN` | `http://localhost:3000` | Allowed CORS origin(s), comma-separated |
-| `LLM_PROVIDER` | `anthropic` | `anthropic` or `openai` |
-| `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | – / `claude-sonnet-5-5` | Used when provider is `anthropic` |
-| `OPENAI_API_KEY`, `OPENAI_MODEL` | – / `gpt-4o-mini` | Used when provider is `openai` |
-| `LLM_TIMEOUT_SECONDS` | `30` | Per-request LLM timeout |
-| `RATE_LIMIT_ENABLED`, `LLM_RATE_LIMIT` | `true`, `20/minute` | Per-user limit on `/expenses/parse` and `/assistant/chat` |
-| `AUTH_RATE_LIMIT` | `10/minute` | Per-IP limit on `/auth/login` and `/auth/register` |
-| `DEFAULT_CURRENCY` | `INR` | Currency assumed when none is mentioned |
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | API address as seen by the browser (build time) |
+---
 
-If the effective provider has no API key (neither saved in Settings nor set on the server), the LLM endpoints return `503 llm_not_configured`; everything else works.
+## Set it up on your computer
 
-## Example requests
+You only do this once.
 
-```bash
-API=http://localhost:8000
+1. **Get the project folder** on your computer and open a terminal inside it.
+   - Mac: open the *Terminal* app, type `cd ` (with a space), drag the project folder into the window, press Enter.
+   - Windows: open the folder, click the address bar, type `cmd`, press Enter.
 
-# Register (returns a JWT); use /auth/login for an existing account
-TOKEN=$(curl -s -X POST $API/auth/register -H 'Content-Type: application/json' \
-  -d '{"email":"me@example.com","password":"correct-horse-battery"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
-AUTH="Authorization: Bearer $TOKEN"
+2. **Create your settings file** by running:
 
-# Parse natural language (does not save)
-curl -s -X POST $API/expenses/parse -H "$AUTH" -H 'Content-Type: application/json' \
-  -d '{"text":"Paid 1800 rupees for lunch at Barista today"}'
-# {"amount":1800.0,"currency":"INR","category":"Food","merchant":"Barista","date":"2026-10-28"}
+   ```bash
+   cp .env.example .env
+   ```
 
-# Save the parsed expense
-curl -s -X POST $API/expenses -H "$AUTH" -H 'Content-Type: application/json' \
-  -d '{"amount":1800,"currency":"INR","category":"Food","merchant":"Barista","date":"2026-10-28"}'
+   (On Windows Command Prompt use `copy .env.example .env`.)
 
-# List with filters and pagination
-curl -s "$API/expenses?month=2026-10&category=Food&page=1&page_size=20" -H "$AUTH"
+3. **Open the new `.env` file** in any text editor (Notepad, TextEdit) and change these:
+   - `JWT_SECRET=` : replace the text after `=` with any long random sentence (at least 32 characters). This keeps your login secure.
+   - *(Optional)* `ANTHROPIC_API_KEY=` : paste your AI key after `=`. You can also skip this and add the key later inside the app (see "Choosing the AI" below).
 
-# Correct a category, then delete
-curl -s -X PATCH $API/expenses/<id> -H "$AUTH" -H 'Content-Type: application/json' -d '{"category":"Entertainment"}'
-curl -s -X DELETE $API/expenses/<id> -H "$AUTH"
+   Save the file.
 
-# Monthly summary with comparison to the previous month
-curl -s "$API/summary?month=2026-10" -H "$AUTH"
+4. **Start the app:**
 
-# Ask the assistant
-curl -s -X POST $API/assistant/chat -H "$AUTH" -H 'Content-Type: application/json' \
-  -d '{"message":"How much did I spend on food compared to last month?"}'
-```
+   ```bash
+   docker compose up --build
+   ```
 
-An unclear message such as "Spent some money yesterday" returns **422**:
+   The first time takes a few minutes while things download. When the messages stop scrolling, it's ready.
 
-```json
-{"detail": {"code": "missing_fields", "missing": ["amount", "category"],
-            "message": "I couldn't find a valid amount in that message. Please include the amount and the category, ..."}}
-```
+5. **Open your browser** and go to **<http://localhost:3000>**.
 
-Other statuses: `401` not logged in, `404` expense not found (or not yours), `429` rate limited,
-`502` LLM provider failed, `503` LLM not configured.
+### Starting and stopping later
 
-## How it works
+- **Stop:** press `Ctrl + C` in the terminal, or run `docker compose down`.
+- **Start again:** run `docker compose up` (no need for `--build` unless something was changed).
+- Your expenses are kept between runs.
 
-- **Parsing:** only the user's text, today's date and the default currency go to the LLM. The result is
-  validated again in code (positive amount, known category, sane date) before anything is saved.
-- **Assistant:** the LLM never sees your database. It first turns the question into a small intent
-  (`compare_months`, `spending_total`, `category_breakdown`), the backend computes the numbers with
-  pandas for the logged-in user only, and the LLM then words a reply from those numbers. Percentages
-  and the suggested budget (last month + 5%, only when spending rose) are calculated in code.
-- **Currencies:** totals use your default currency. Expenses in other currencies are saved and listed
-  separately on the dashboard rather than converted.
-- **Security:** bcrypt password hashing, JWT auth, every query filtered by `user_id`, CORS limited to
-  `FRONTEND_ORIGIN`, per-user rate limits on LLM endpoints, and API keys/bearer tokens redacted from logs.
+---
 
-## Tests
+## How to use it
 
-```bash
-cd backend && pytest -q          # LLM is mocked; uses in-memory SQLite by default
-TEST_DATABASE_URL=postgresql+psycopg://expense:expense@localhost:5432/expense_test pytest -q   # against Postgres
+### 1. Create your account
+On the first screen choose to create an account with your email and a password. Next time, just log in.
 
-cd frontend && npm run typecheck && npm run lint && npm run build
-```
+![Login page](docs/screenshots/01-login.png)
 
-GitHub Actions (`.github/workflows/ci.yml`) runs ruff, the migrations (up and down) and pytest against
-Postgres, plus the frontend typecheck, lint and build.
+### 2. Pick your currency
+Open **Settings** and choose the currency you normally use (for example LKR, INR, USD). Totals and charts use it.
 
-## Known limitations
+![Settings page](docs/screenshots/07-settings.png)
 
-- The JWT is kept in `localStorage` (simple, but readable by any XSS). For stricter setups, switch to an
-  httpOnly cookie.
-- Rate limiting is in memory, so it is per backend process. Use Redis if you run several replicas.
-- "Today" and month boundaries use the server's date, not the user's timezone.
-- Chat history is not stored; the browser sends the last few turns with each question.
+### 3. Add an expense
+On the **Dashboard**, depending on your setting you'll see one or both of these:
+
+- **Describe it (AI):** type a sentence such as
+  - "Paid 1800 for lunch at Barista today"
+  - "Uber to the airport 2400 yesterday"
+  - "Groceries at Keells 6500"
+
+  Check what the app understood, fix anything that's wrong, and save.
+  If your sentence is missing something (like the amount), the app will tell you what to add.
+- **Manual:** fill in the amount, category, shop, and date yourself, then save.
+
+![Adding an expense manually](docs/screenshots/03-add-expense.png)
+
+### 4. Look back at your spending
+- **Transactions:** browse, search, change a category, or delete a mistake.
+- **Reports:** see which months and categories cost the most.
+
+![Transactions](docs/screenshots/04-transactions.png)
+
+![Reports](docs/screenshots/05-reports.png)
+
+### 5. Ask the Assistant
+Open **Assistant** and ask in your own words, for example:
+
+- "How much did I spend this month?"
+- "How much did I spend on food compared to last month?"
+- "Where is most of my money going?"
+
+The numbers come from your saved expenses, not guesses.
+
+![Assistant](docs/screenshots/06-assistant.png)
+
+---
+
+## Settings explained
+
+### Adding expenses
+Choose how you want to add expenses:
+
+1. **Using AI**: type a sentence and the AI fills in the details. Needs an AI key.
+2. **Manual**: fill in a form yourself. No AI needed.
+3. **Both**: have both options on the dashboard and switch between them.
+
+This choice is remembered in your browser. The settings page above shows the three options under "Adding expenses".
+
+### Choosing the AI
+In **Settings → AI provider**, pick Anthropic (Claude), OpenAI, or Ollama (an AI that runs free on your
+own computer), then paste your key. The key is stored scrambled (encrypted) and is never shown again.
+
+---
+
+## If something goes wrong
+
+| Problem | Try this |
+|---|---|
+| The page won't open | Make sure Docker Desktop is running and the terminal still shows the app running. Then reload <http://localhost:3000>. |
+| "Port already in use" | Another program is using the same door. Close it, or run `docker compose down` and start again. |
+| "AI not configured" | Add an AI key in **Settings**, or switch "Adding expenses" to **Manual**. |
+| "Too many requests" | You hit the safety limit. Wait a minute and try again. |
+| Forgot to change `JWT_SECRET` | Stop the app, edit `.env`, and start it again. You'll need to log in again. |
+
+---
+
+## For developers
+
+The technical details (how it's built, running without Docker, every setting, API examples, tests) are in
+[docs/TECHNICAL.md](docs/TECHNICAL.md). In short: a Python (FastAPI) backend, a Next.js frontend and a
+PostgreSQL database. The API documentation is at <http://localhost:8000/docs> while the app is running.
