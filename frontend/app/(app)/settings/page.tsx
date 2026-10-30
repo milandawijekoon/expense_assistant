@@ -3,8 +3,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { CurrencySelect } from "@/components/CurrencySelect";
+import { Select } from "@/components/Select";
 import { ErrorBanner, PageLoading, Spinner } from "@/components/ui";
 import { api } from "@/lib/api";
+import { useEntryMode, type EntryMode } from "@/lib/entryMode";
 import type { LLMSettings, Provider } from "@/lib/types";
 
 const PROVIDERS: Record<Provider, { label: string; model: string; needsKey: boolean; urlHint: string }> = {
@@ -21,6 +23,8 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-semibold">Settings</h1>
       <CurrencyForm />
 
+      <EntryModeForm configured={query.data?.configured} />
+
       <h2 className="mt-10 text-lg font-semibold">AI provider</h2>
       <p className="mt-1 text-sm text-slate-600">
         Choose the provider that reads your expenses and answers your questions. Your API key is
@@ -32,6 +36,46 @@ export default function SettingsPage() {
         {query.data && <LLMForm saved={query.data} />}
       </div>
     </div>
+  );
+}
+
+const ENTRY_MODES: { value: EntryMode; title: string; help: string }[] = [
+  { value: "ai", title: "Using AI", help: "Describe expenses in words and let the AI fill in the details. Needs an AI provider." },
+  { value: "manual", title: "Manual", help: "Fill in the amount, category and date yourself. No AI provider needed." },
+  { value: "both", title: "Both", help: "Show \"Describe it\" and \"Manual\" side by side on the dashboard." },
+];
+
+function EntryModeForm({ configured }: { configured?: boolean }) {
+  const [mode, setMode] = useEntryMode();
+  return (
+    <section aria-labelledby="entry-title" className="mt-10">
+      <h2 id="entry-title" className="text-lg font-semibold">Adding expenses</h2>
+      <p className="mt-1 text-sm text-slate-600">
+        Choose how you log expenses. Manual entry works without any AI provider.
+        {configured === false && mode !== "manual" && " No AI provider is set up yet, so AI entry won't work until you add one below."}
+      </p>
+      <div role="radiogroup" aria-label="Expense entry method" className="mt-4 grid gap-3 sm:grid-cols-3">
+        {ENTRY_MODES.map((o) => {
+          const on = mode === o.value;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => setMode(o.value)}
+              className={`rounded-2xl p-4 text-left shadow-soft ring-1 transition ${
+                on ? "bg-brand-50 ring-2 ring-brand-500" : "bg-white ring-slate-900/5 hover:ring-slate-900/15"
+              }`}
+            >
+              <span className={`block text-sm font-semibold ${on ? "text-brand-700" : ""}`}>{o.title}</span>
+              <span className="mt-1 block text-xs leading-relaxed text-slate-500">{o.help}</span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-xs text-slate-400">Saved in this browser.</p>
+    </section>
   );
 }
 
@@ -163,11 +207,12 @@ function LLMForm({ saved }: { saved: LLMSettings }) {
 
       <div>
         <label htmlFor="provider" className="mb-1 block text-sm font-medium">Provider</label>
-        <select id="provider" className="input" value={provider} onChange={(e) => changeProvider(e.target.value as Provider)}>
-          {(Object.keys(PROVIDERS) as Provider[]).map((p) => (
-            <option key={p} value={p}>{PROVIDERS[p].label}</option>
-          ))}
-        </select>
+        <Select
+          id="provider"
+          value={provider}
+          onChange={(v) => changeProvider(v as Provider)}
+          options={(Object.keys(PROVIDERS) as Provider[]).map((p) => ({ value: p, label: PROVIDERS[p].label }))}
+        />
       </div>
 
       <div>

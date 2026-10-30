@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { Select } from "@/components/Select";
 import { currencyOptions } from "@/lib/currencies";
 
 export function CurrencySelect({
@@ -9,28 +10,25 @@ export function CurrencySelect({
   onChange,
   disabled,
   describedBy,
+  className = "input",
 }: {
   id: string;
   value: string;
   onChange: (code: string) => void;
   disabled?: boolean;
   describedBy?: string;
+  className?: string;
 }) {
   const options = useMemo(() => currencyOptions(value), [value]);
   return (
-    <select
+    <Select
       id={id}
-      className="input"
+      className={className}
       value={value}
       disabled={disabled}
-      aria-describedby={describedBy}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      {options.map((o) => (
-        <option key={o.code} value={o.code}>
-          {o.label}
-        </option>
-      ))}
-    </select>
+      describedBy={describedBy}
+      onChange={onChange}
+      options={options.map((o) => ({ value: o.code, label: o.label }))}
+    />
   );
 }

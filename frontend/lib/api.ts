@@ -99,7 +99,7 @@ export const api = {
 
   parseExpense: (text: string) =>
     request<ParsedExpense>("/expenses/parse", { method: "POST", body: { text } }),
-  createExpense: (body: ParsedExpense & { raw_text?: string }) =>
+  createExpense: (body: ParsedExpense & { raw_text?: string; description?: string | null }) =>
     request<Expense>("/expenses", { method: "POST", body }),
   listExpenses: ({ month, category, page }: ExpenseFilters, pageSize = PAGE_SIZE) => {
     const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });

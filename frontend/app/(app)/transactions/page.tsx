@@ -4,6 +4,9 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { CurrencySelect } from "@/components/CurrencySelect";
+import { DatePicker } from "@/components/DatePicker";
+import { MonthPicker } from "@/components/MonthPicker";
+import { Select } from "@/components/Select";
 import { ErrorBanner, Spinner } from "@/components/ui";
 import { PAGE_SIZE, api } from "@/lib/api";
 import { CATEGORY_COLORS, currentMonth, formatDayLabel, formatMoney } from "@/lib/format";
@@ -118,32 +121,28 @@ export default function TransactionsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <label htmlFor="f-month" className="sr-only">Month</label>
-          <input
+          <MonthPicker
             id="f-month"
-            type="month"
-            className="input w-auto py-1.5"
             value={month}
-            onChange={(e) => {
-              setMonth(e.target.value);
+            onChange={(v) => {
+              setMonth(v);
               setPage(1);
             }}
           />
           <label htmlFor="f-category" className="sr-only">Category</label>
-          <select
+          <Select
             id="f-category"
             className="input w-auto py-1.5"
             value={category}
-            onChange={(e) => {
-              setCategory(e.target.value);
+            onChange={(v) => {
+              setCategory(v);
               setPage(1);
             }}
-          >
-            <option value="">All categories</option>
-            {CATEGORIES.map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
+            options={[
+              { value: "", label: "All categories" },
+              ...CATEGORIES.map((c) => ({ value: c, label: c, dot: colorOf(c) })),
+            ]}
+          />
           {filtered && (
             <button
               type="button"
@@ -334,7 +333,7 @@ function EditRow({
     >
       <div className="sm:col-span-2">
         <label htmlFor="e-date" className={field}>Date</label>
-        <input id="e-date" type="date" required className={input} value={draft.date} onChange={(e) => set("date", e.target.value)} />
+        <DatePicker id="e-date" className={input} value={draft.date} onChange={(v) => set("date", v)} />
       </div>
       <div className="sm:col-span-2">
         <label htmlFor="e-amount" className={field}>Amount</label>
@@ -356,11 +355,13 @@ function EditRow({
       </div>
       <div className="sm:col-span-2">
         <label htmlFor="e-category" className={field}>Category</label>
-        <select id="e-category" className={input} value={draft.category} onChange={(e) => set("category", e.target.value as Category)}>
-          {CATEGORIES.map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </select>
+        <Select
+          id="e-category"
+          className={input}
+          value={draft.category}
+          onChange={(v) => set("category", v as Category)}
+          options={CATEGORIES.map((c) => ({ value: c, label: c, dot: colorOf(c) }))}
+        />
       </div>
       <div className="sm:col-span-2">
         <label htmlFor="e-merchant" className={field}>Merchant</label>

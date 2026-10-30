@@ -2,9 +2,11 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { ManualExpenseForm } from "@/components/ManualExpenseForm";
 import { ErrorBanner, Spinner } from "@/components/ui";
 import { api } from "@/lib/api";
 import { CATEGORY_COLORS, formatDate, formatMoney } from "@/lib/format";
+import { entryOptions, useEntryMode } from "@/lib/entryMode";
 import type { Expense } from "@/lib/types";
 
 const EXAMPLES = [
@@ -14,6 +16,62 @@ const EXAMPLES = [
 ];
 
 export function AddExpenseForm() {
+  const [mode] = useEntryMode();
+  const [tab, setTab] = useState<"ai" | "manual" | null>(null);
+
+  const { ai, manual } = entryOptions(mode);
+  const active = tab && (tab === "ai" ? ai : manual) ? tab : ai ? "ai" : "manual";
+
+  return (
+    <section
+      aria-labelledby="add-title"
+      className="relative rounded-2xl bg-gradient-to-br from-brand-600 via-brand-600 to-brand-900 p-5 text-white shadow-soft sm:p-6"
+    >
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+        <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
+      </div>
+      <div className="relative flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id="add-title" className="text-lg font-semibold tracking-tight">
+            {active === "ai" ? "What did you spend?" : "Add an expense"}
+          </h2>
+          <p className="mt-0.5 text-sm text-brand-100">
+            {active === "ai"
+              ? "Type it the way you'd say it. We'll find the amount, category and date."
+              : "Fill in the details yourself. No AI provider needed."}
+          </p>
+        </div>
+        {ai && manual && (
+          <div role="tablist" aria-label="Entry method" className="flex rounded-full bg-white/15 p-1 text-sm font-medium ring-1 ring-white/20">
+            {(
+              [
+                ["ai", "Describe it"],
+                ["manual", "Manual"],
+              ] as const
+            ).map(([key, text]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={active === key}
+                onClick={() => setTab(key)}
+                className={`rounded-full px-3.5 py-1 transition ${
+                  active === key ? "bg-white text-brand-700 shadow-sm" : "text-brand-50 hover:bg-white/10"
+                }`}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {active === "ai" ? <AiExpenseInput /> : <ManualExpenseForm />}
+    </section>
+  );
+}
+
+function AiExpenseInput() {
   const [text, setText] = useState("");
   const queryClient = useQueryClient();
 
@@ -37,88 +95,72 @@ export function AddExpenseForm() {
   };
 
   return (
-    <section
-      aria-labelledby="add-title"
-      className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 via-brand-600 to-brand-900 p-5 text-white shadow-soft sm:p-6"
+    <form
+      className="relative mt-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit();
+      }}
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10 blur-2xl"
-      />
-      <h2 id="add-title" className="relative text-lg font-semibold tracking-tight">
-        What did you spend?
-      </h2>
-      <p className="relative mt-0.5 text-sm text-brand-100">
-        Type it the way you&apos;d say it. We&apos;ll find the amount, category and date.
-      </p>
+      <label htmlFor="expense-text" className="sr-only">
+        Describe your expense
+      </label>
+      <div className="rounded-xl bg-white p-2 text-slate-900 shadow-lg shadow-brand-900/20 focus-within:ring-2 focus-within:ring-white/60">
+        <textarea
+          id="expense-text"
+          rows={2}
+          maxLength={500}
+          className="block w-full resize-none rounded-lg border-0 bg-transparent px-2 py-1.5 text-[15px] placeholder:text-slate-400 focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          placeholder={EXAMPLES[0]}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              submit();
+            }
+          }}
+          aria-invalid={mutation.isError}
+          aria-describedby="expense-help"
+        />
+        <div className="flex items-center justify-between gap-3 px-1 pt-1">
+          <p id="expense-help" className="text-xs text-slate-400">
+            Press Enter to save
+          </p>
+          <button
+            type="submit"
+            className="btn-primary px-4 py-1.5"
+            disabled={!text.trim() || mutation.isPending}
+            aria-busy={mutation.isPending}
+          >
+            {mutation.isPending && <Spinner label="Saving your expense" />}
+            {mutation.isPending ? "Saving…" : "Add expense"}
+          </button>
+        </div>
+      </div>
 
-      <form
-        className="relative mt-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-      >
-        <label htmlFor="expense-text" className="sr-only">
-          Describe your expense
-        </label>
-        <div className="rounded-xl bg-white p-2 text-slate-900 shadow-lg shadow-brand-900/20 focus-within:ring-2 focus-within:ring-white/60">
-          <textarea
-            id="expense-text"
-            rows={2}
-            maxLength={500}
-            className="block w-full resize-none rounded-lg border-0 bg-transparent px-2 py-1.5 text-[15px] placeholder:text-slate-400 focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
-            placeholder={EXAMPLES[0]}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                submit();
-              }
-            }}
-            aria-invalid={mutation.isError}
-            aria-describedby="expense-help"
-          />
-          <div className="flex items-center justify-between gap-3 px-1 pt-1">
-            <p id="expense-help" className="text-xs text-slate-400">
-              Press Enter to save
-            </p>
-            <button
-              type="submit"
-              className="btn-primary px-4 py-1.5"
-              disabled={!text.trim() || mutation.isPending}
-              aria-busy={mutation.isPending}
-            >
-              {mutation.isPending && <Spinner label="Saving your expense" />}
-              {mutation.isPending ? "Saving…" : "Add expense"}
-            </button>
+      <div className="mt-3 flex flex-wrap gap-2" aria-label="Examples">
+        {EXAMPLES.map((ex) => (
+          <button
+            key={ex}
+            type="button"
+            onClick={() => setText(ex)}
+            className="rounded-full bg-white/10 px-3 py-1 text-xs text-brand-50 ring-1 ring-white/20 transition hover:bg-white/20"
+          >
+            {ex}
+          </button>
+        ))}
+      </div>
+
+      <div aria-live="polite" className="mt-3 empty:hidden">
+        {mutation.isError && (
+          <div className="rounded-lg bg-white p-1 text-slate-900">
+            <ErrorBanner error={mutation.error} onRetry={() => mutation.mutate(text.trim())} />
           </div>
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-2" aria-label="Examples">
-          {EXAMPLES.map((ex) => (
-            <button
-              key={ex}
-              type="button"
-              onClick={() => setText(ex)}
-              className="rounded-full bg-white/10 px-3 py-1 text-xs text-brand-50 ring-1 ring-white/20 transition hover:bg-white/20"
-            >
-              {ex}
-            </button>
-          ))}
-        </div>
-
-        <div aria-live="polite" className="mt-3 empty:hidden">
-          {mutation.isError && (
-            <div className="rounded-lg bg-white p-1 text-slate-900">
-              <ErrorBanner error={mutation.error} onRetry={() => mutation.mutate(text.trim())} />
-            </div>
-          )}
-          {mutation.isSuccess && <SavedNote expense={mutation.data} />}
-        </div>
-      </form>
-    </section>
+        )}
+        {mutation.isSuccess && <SavedNote expense={mutation.data} />}
+      </div>
+    </form>
   );
 }
 
